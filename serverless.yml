@@ -1,0 +1,44 @@
+service: dealcentral
+
+provider:
+  name: aws
+  runtime: python3.7
+  region: ${env:REGION}
+
+package:
+  exclude:
+    - node_modules/**
+    - venv/**
+    - README.md
+    - package.json
+    - package-lock.json
+    - requirements.txt
+
+# resources
+resources:
+  Outputs:
+    ApiId:
+      Value:
+        Ref: 'ApiGatewayRestApi'
+
+# plugins:
+#   - serverless-pseudo-parameters
+
+# lambda functions
+functions:
+  create:
+    handler: webhook/consumer.consume
+    vpc:
+      securityGroupIds:
+        - ${cf:webhook-networking-dev.DBSecurityGroup.Value}
+      subnetIds:
+        - ${cf:webhook-networking-dev.DatabaseVPCPrivateSubnet.Value}
+    environment:
+      DB_PRIVATE_HOSTNAME: ${cf:webhook-db-dev.DBInstanceDNSInternal.Value}
+      POSTGRES_PASS: ${env:POSTGRES_PASS}
+    events:
+      - http:
+          path: consume
+          method: post
+          cors: true
+          integration: lambda

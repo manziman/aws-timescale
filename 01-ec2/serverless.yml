@@ -1,0 +1,76 @@
+service: webhook-db
+
+provider:
+  name: aws
+  region: ${env:REGION}
+
+package:
+  exclude:
+    - ./**
+
+# Resources 
+resources:
+  Resources:
+    BastionHost:
+      Type: AWS::EC2::Instance
+      Properties:
+        ImageId: ami-0ac019f4fcb7cb7e6 # Ubuntu 18.04 LTS
+        InstanceInitiatedShutdownBehavior: stop
+        InstanceType: t2.micro
+        PrivateIpAddress: '${env:DB_IP}'
+        SecurityGroupIds: 
+          - ${cf:webhook-networking-dev.DBSecurityGroupId.Value}
+          - ${cf:webhook-networking-dev.BastionSecurityGroupId.Value}
+        SourceDestCheck: true
+        SubnetId: ${cf:webhook-networking-dev.DBPubSubnetId.Value}
+        Tags:
+          - Key: superstack
+            Value: webhook-example
+        UserData:
+          Fn::Base64:
+            - |
+              #!/bin/bash
+              apt-get update -y && apt-get upgrade -y
+              apt-get install openssh-server -y
+              service ssh start
+    TimestreamDB:
+      Type: AWS::EC2::Instance
+      Properties:
+        ImageId: ami-0ac019f4fcb7cb7e6 # Ubuntu 18.04 LTS
+        InstanceInitiatedShutdownBehavior: stop
+        InstanceType: t2.micro
+        PrivateIpAddress: '${env:DB_IP}'
+        SecurityGroupIds: 
+          - ${cf:webhook-networking-dev.DBSecurityGroupId.Value}
+        SourceDestCheck: true
+        SubnetId: ${cf:webhook-networking-dev.DBPrivSubnetId.Value}
+        Tags:
+          - Key: superstack
+            Value: webhook-example
+        UserData:
+          Fn::Base64:
+            - |
+              #!/bin/bash
+              apt-get update -y && apt-get upgrade -y
+              apt-get install software-properties-common gnupg2 wget openssh-server -y
+              sh -c "echo 'deb http://apt.postgresql.org/pub/repos/apt/ bionic-pgdg main' >> /etc/apt/sources.list.d/pgdg.list"
+              wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
+              add-apt-repository -y ppa:timescale/timescaledb-ppa
+              apt-get update && apt-get upgrade -y
+              printf "12\n5\n" | apt-get install -y timescaledb-postgresql-11
+              timescaledb-tune --quiet --yes
+              service postgresql restart
+              su - postgres -c "psql -U postgres -d postgres -c \"alter user postgres with password 'p@ssw0rd';\""
+              su - postgres -c "printf \"CREATE database webhook;\" | PGPASSWORD='p@ssw0rd' psql -U postgres -f -"
+              su - postgres -c "printf \"CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;\" | PGPASSWORD='p@ssw0rd' psql -U postgres -f - webhook"
+              service ssh start
+  Outputs:
+    DBInstanceId:
+      Value:
+        Ref: TimestreamDB
+    DBInstanceDNSInternal:
+      Value:
+        Fn::GetAtt: [ TimestreamDB, PrivateDnsName ]
+
+custom:
+  postgresPass: ${env:POSTGRES_PASS}
