@@ -7,12 +7,13 @@ provider:
 
 package:
   exclude:
-    - node_modules/**
-    - venv/**
-    - README.md
-    - package.json
-    - package-lock.json
-    - requirements.txt
+    - ./**
+  include:
+    - ./webhook
+    - ./requirements.txt
+
+plugins:
+  - serverless-python-requirements
 
 # resources
 resources:

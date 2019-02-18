@@ -8,6 +8,11 @@ Install Serverless framework:
 $ npm i -g serverless
 ```
 
+Install dependencies:
+```
+$ npm i
+```
+
 ## Deploying/Updating full stack
 
 Ensure that you have aws credentials set in your default profile (with proper permissions).
