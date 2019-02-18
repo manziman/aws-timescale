@@ -6,8 +6,6 @@ provider:
   region: ${env:REGION}
 
 package:
-  exclude:
-    - ./**
   include:
     - ./webhook
     - ./requirements.txt
