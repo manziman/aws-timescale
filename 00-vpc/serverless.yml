@@ -58,7 +58,7 @@ resources:
       DependsOn:
         - DatabaseVPC
         - DatabaseVPCInternetGateway
-    DatabaseVPCRouteTable:
+    DatabaseVPCPrivateRouteTable:
       Type: AWS::EC2::RouteTable
       Properties: 
         VpcId: ${self:resources.Outputs.DBVPCId.Value}
@@ -67,6 +67,31 @@ resources:
             Value: webhooks-example
       DependsOn:
         - DatabaseVPC
+    DatabaseVPCPublicRouteTable:
+      Type: AWS::EC2::RouteTable
+      Properties: 
+        VpcId: ${self:resources.Outputs.DBVPCId.Value}
+        Tags:
+          - Key: superstack
+            Value: webhooks-example
+      DependsOn:
+        - DatabaseVPC
+    DatabaseVPCPrivateRouteAssociation:
+      Type: AWS::EC2::SubnetRouteTableAssociation
+      Properties: 
+        RouteTableId: ${self:resources.Outputs.DBVPCPrivateRouteTableId.Value}
+        SubnetId: ${self:resources.Outputs.DBPrivSubnetId.Value}
+      DependsOn:
+        - DatabaseVPCPrivateRouteTable
+        - DatabaseVPCPrivateSubnet
+    DatabaseVPCPublicRouteAssociation:
+      Type: AWS::EC2::SubnetRouteTableAssociation
+      Properties: 
+        RouteTableId: ${self:resources.Outputs.DBVPCPublicRouteTableId.Value}
+        SubnetId: ${self:resources.Outputs.DBPubSubnetId.Value}
+      DependsOn:
+        - DatabaseVPCPublicRouteTable
+        - DatabaseVPCPublicSubnet
     DatabaseVPCNatGatewayEIP:
       Type: AWS::EC2::EIP
       Properties:
@@ -84,15 +109,24 @@ resources:
       DependsOn:
         - DatabaseVPCPublicSubnet
         - DatabaseVPCNatGatewayEIP
-    DatabaseVPCDefaultRoute:
+    DatabaseVPCPrivateDefaultRoute:
       Type: AWS::EC2::Route
       Properties: 
         DestinationCidrBlock: '0.0.0.0/0'
         NatGatewayId: ${self:resources.Outputs.DBVPCNatGatewayId.Value}
-        RouteTableId: ${self:resources.Outputs.DBVPCRouteTableId.Value}
+        RouteTableId: ${self:resources.Outputs.DBVPCPrivateRouteTableId.Value}
       DependsOn:
         - DatabaseVPCNatGateway
-        - DatabaseVPCRouteTable
+        - DatabaseVPCPrivateRouteTable
+    DatabaseVPCPublicDefaultRoute:
+      Type: AWS::EC2::Route
+      Properties: 
+        DestinationCidrBlock: '0.0.0.0/0'
+        GatewayId: ${self:resources.Outputs.DBVPCInternetGatewayId.Value}
+        RouteTableId: ${self:resources.Outputs.DBVPCPublicRouteTableId.Value}
+      DependsOn:
+        - DatabaseVPCInternetGateway
+        - DatabaseVPCPrivateRouteTable
     BastionSecurityGroup:
       Type: AWS::EC2::SecurityGroup
       Properties: 
@@ -124,10 +158,13 @@ resources:
         Ref: DatabaseVPCNatGateway
     DBVPCInternetGatewayId:
       Value:
-        Ref: DatabaseVPCInternetGatewayAttachment
-    DBVPCRouteTableId:
+        Ref: DatabaseVPCInternetGateway
+    DBVPCPrivateRouteTableId:
       Value:
-        Ref: DatabaseVPCRouteTable
+        Ref: DatabaseVPCPrivateRouteTable
+    DBVPCPublicRouteTableId:
+      Value:
+        Ref: DatabaseVPCPublicRouteTable
     DBPrivSubnetId:
       Value:
         Ref: DatabaseVPCPrivateSubnet

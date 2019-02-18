@@ -30,9 +30,9 @@ functions:
     handler: webhook/consumer.consume
     vpc:
       securityGroupIds:
-        - ${cf:webhook-networking-dev.DBSecurityGroup.Value}
+        - ${cf:webhook-networking-dev.DBSecurityGroupId.Value}
       subnetIds:
-        - ${cf:webhook-networking-dev.DatabaseVPCPrivateSubnet.Value}
+        - ${cf:webhook-networking-dev.DBPrivSubnetId.Value}
     environment:
       DB_PRIVATE_HOSTNAME: ${cf:webhook-db-dev.DBInstanceDNSInternal.Value}
       POSTGRES_PASS: ${env:POSTGRES_PASS}
