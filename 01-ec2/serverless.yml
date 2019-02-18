@@ -32,8 +32,9 @@ resources:
               - ""
               -
                 - "#!/bin/bash\n"
-                - "apt-get update -y && apt-get upgrade -y\n"
-                - "apt-get install openssh-server -y\n"
+                - "export DEBIAN_FRONTEND=noninteractive\n"
+                - "apt-get update -yq && apt-get upgrade -yq\n"
+                - "apt-get install openssh-server -yq\n"
                 - "service ssh start\n"
     TimestreamDB:
       Type: AWS::EC2::Instance
@@ -56,12 +57,13 @@ resources:
               - ""
               -
                 - "#!/bin/bash\n"
-                - "apt-get update -y && apt-get upgrade -y\n"
-                - "apt-get install software-properties-common gnupg2 wget openssh-server -y\n"
+                - "export DEBIAN_FRONTEND=noninteractive\n"
+                - "apt-get update -yq && apt-get upgrade -yq\n"
+                - "apt-get install software-properties-common gnupg2 wget openssh-server -yq\n"
                 - "sh -c \"echo 'deb http://apt.postgresql.org/pub/repos/apt/ bionic-pgdg main' >> /etc/apt/sources.list.d/pgdg.list\"\n"
                 - "wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -\n"
                 - "add-apt-repository -y ppa:timescale/timescaledb-ppa\n"
-                - "apt-get update && apt-get upgrade -y\n"
+                - "apt-get update -yq && apt-get upgrade -yq\n"
                 - "printf \"12\n5\n\" | apt-get install -y timescaledb-postgresql-11\n"
                 - "timescaledb-tune --quiet --yes\n"
                 - "service postgresql restart\n"
