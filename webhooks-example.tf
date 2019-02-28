@@ -1,14 +1,14 @@
 
 provider "aws" {
-  version = "~> 0.1"
+  version = "~> 1.0"
 
-  access_key = "${var.aws_access_key}"
+  access_key = "${var.aws_access_id}"
   secret_key = "${var.aws_secret_id}"
   region     = "${var.region}"
 }
 
 resource "aws_vpc" "db_vpc" {
-  cidr_block       = "${var.cidr_blocks.db_vpc_cidr}"
+  cidr_block       = "${var.cidr_blocks["db_vpc_cidr"]}"
   instance_tenancy = "default"
   enable_dns_support = true
   enable_dns_hostnames = true
@@ -21,7 +21,7 @@ resource "aws_vpc" "db_vpc" {
 
 resource "aws_subnet" "db_sub_priv" {
   vpc_id     = "${aws_vpc.db_vpc.id}"
-  cidr_block = "${var.cidr_blocks.db_subnet_priv}"
+  cidr_block = "${var.cidr_blocks["db_subnet_priv"]}"
 
   tags = {
     Name = "db_sub_priv"
@@ -33,7 +33,7 @@ resource "aws_subnet" "db_sub_priv" {
 
 resource "aws_subnet" "db_sub_pub" {
   vpc_id     = "${aws_vpc.db_vpc.id}"
-  cidr_block = "${var.cidr_blocks.db_subnet_pub}"
+  cidr_block = "${var.cidr_blocks["db_subnet_pub"]}"
   map_public_ip_on_launch = true
 
   tags = {
@@ -215,7 +215,7 @@ resource "aws_instance" "timestreamdb" {
   instance_initiated_shutdown_behavior = "stop"
   instance_type = "t2.micro"
   key_name = "main"
-  private_ip = "${var.ip_addrs.db_address}"
+  private_ip = "${var.ip_addrs["db_address"]}"
   vpc_security_group_ids = ["aws_default_security_group.db_vpc_default_sg"]
   source_dest_check = true
   subnet_id = "${aws_subnet.db_sub_priv.id}"
