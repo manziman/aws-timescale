@@ -8,30 +8,33 @@ Install Serverless framework:
 $ npm i -g serverless
 ```
 
+Install and Init Terraform:
+
+```
+$ curl https://releases.hashicorp.com/terraform/<tf_version>/terraform_<tf_version>_<os>_<arch>.zip > terraform.zip
+$ unzip -d /usr/local/bin/
+$ terraform init
+```
+
 Install dependencies:
 ```
 $ npm i
 ```
 
-## Deploying/Updating full stack
+## Creating Terraform plan for deployment
 
-Ensure that you have aws credentials set in your default profile (with proper permissions).
-
-Run main deployment script:
 ```
-$ ./deploy-main.sh
+$ make plan
 ```
 
-## Updating functions only
+## Apply Terraform plan and deploy/update Serverless functions
 
-Run:
 ```
-$ ./update-functions.sh
+$ make deploy
 ```
 
-## Tearing down
+## Destroy stack
 
-Run teardown script:
 ```
-$ ./remove-main.sh
+$ make destroy
 ```

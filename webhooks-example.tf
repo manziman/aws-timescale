@@ -7,6 +7,11 @@ provider "aws" {
   region     = "${var.region}"
 }
 
+resource "aws_key_pair" "main" {
+  key_name   = "main"
+  public_key = "${file(var.ssh_pub_key)}"
+}
+
 resource "aws_vpc" "db_vpc" {
   cidr_block       = "${var.cidr_blocks["db_vpc_cidr"]}"
   instance_tenancy = "default"
@@ -17,6 +22,8 @@ resource "aws_vpc" "db_vpc" {
     Name = "db_vpc"
     Stack = "webhooks-example"
   }
+
+  depends_on = ["aws_key_pair.main"]
 }
 
 resource "aws_subnet" "db_sub_priv" {

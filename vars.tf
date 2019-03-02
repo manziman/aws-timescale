@@ -5,6 +5,9 @@ variable "aws_access_id" {
 variable "aws_secret_id" {
   type = "string"
 }
+variable "ssh_pub_key" {
+  type = "string"
+}
 
 variable "region" {
   default = "us-east-1"
