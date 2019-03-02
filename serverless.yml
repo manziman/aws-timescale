@@ -12,9 +12,14 @@ provider:
   region: ${env:REGION}
 
 package:
+  exclude:
+    - node_modules/**
+    - venv/**
+    - .vscode/**
+    - .terraform/**
   include:
-    - ./webhook
-    - ./requirements.txt
+    - webhook/**
+    - requirements.txt
 
 plugins:
   - serverless-python-requirements
