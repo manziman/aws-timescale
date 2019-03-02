@@ -25,7 +25,7 @@ variable "ip_addrs" {
   type = "map"
 
   default = {
-    db_address = "20.0.2.55"
+    db_address = "10.0.2.55"
   }
 }
 

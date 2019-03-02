@@ -1,6 +1,6 @@
 
 provider "aws" {
-  version = "~> 1.0"
+  version = "~> 1.60.0"
 
   access_key = "${var.aws_access_id}"
   secret_key = "${var.aws_secret_id}"
@@ -56,35 +56,26 @@ resource "aws_internet_gateway" "db_igw" {
 }
 
 resource "aws_route_table" "db_priv_routes" {
-  subnet_id = "${aws_vpc.db_vpc.id}"
+  vpc_id = "${aws_vpc.db_vpc.id}"
 
   tags = {
     Name = "db_priv_route_table"
     Stack = "webhooks-example"
   }
-
-  depends_on = ["aws_vpc.db_vpc"]
 }
 
 resource "aws_route_table" "db_pub_routes" {
-  subnet_id = "${aws_vpc.db_vpc.id}"
+  vpc_id = "${aws_vpc.db_vpc.id}"
 
   tags = {
     Name = "db_pub_route_table"
     Stack = "webhooks-example"
   }
-
-  depends_on = ["aws_vpc.db_vpc"]
 }
 
 resource "aws_route_table_association" "dp_priv_route" {
   subnet_id      = "${aws_subnet.db_sub_priv.id}"
   route_table_id = "${aws_route_table.db_priv_routes.id}"
-
-  tags = {
-    Name = "db_priv_route_assoc"
-    Stack = "webhooks-example"
-  }
 
   depends_on = ["aws_subnet.db_sub_priv", "aws_route_table.db_priv_routes"]
 }
@@ -93,16 +84,11 @@ resource "aws_route_table_association" "dp_pub_route" {
   subnet_id      = "${aws_subnet.db_sub_pub.id}"
   route_table_id = "${aws_route_table.db_pub_routes.id}"
 
-  tags = {
-    Name = "db_pub_route_assoc"
-    Stack = "webhooks-example"
-  }
-
   depends_on = ["aws_subnet.db_sub_pub", "aws_route_table.db_pub_routes"]
 }
 
 resource "aws_eip" "db_natgat_eip" {
-  domain = "vpc"
+  vpc = true
 
   tags = {
     Name = "db_natgat_eip"
@@ -129,11 +115,6 @@ resource "aws_route" "db_priv_route" {
   destination_cidr_block    = "0.0.0.0/0"
   nat_gateway_id = "${aws_nat_gateway.db_natgat.id}"
 
-  tags = {
-    Name = "db_natgat"
-    Stack = "webhooks-example"
-  }
-
   depends_on                = ["aws_route_table.db_priv_routes", "aws_nat_gateway.db_natgat"]
 }
 
@@ -141,11 +122,6 @@ resource "aws_route" "db_pub_route" {
   route_table_id            = "${aws_route_table.db_pub_routes.id}"
   destination_cidr_block    = "0.0.0.0/0"
   gateway_id = "${aws_internet_gateway.db_igw.id}"
-
-  tags = {
-    Name = "db_pub_route"
-    Stack = "webhooks-example"
-  }
 
   depends_on                = ["aws_route_table.db_pub_routes", "aws_internet_gateway.db_igw"]
 }
@@ -159,7 +135,7 @@ resource "aws_security_group" "bastion_ssh" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = "0.0.0.0/0"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   tags = {
@@ -170,7 +146,7 @@ resource "aws_security_group" "bastion_ssh" {
   depends_on = ["aws_vpc.db_vpc"]
 }
 
-resource "aws_default_security_group" "db_vpc_default_sg" {
+resource "aws_default_security_group" "default" {
   vpc_id = "${aws_vpc.db_vpc.id}"
 
   ingress {
@@ -193,13 +169,15 @@ resource "aws_instance" "bastion" {
   instance_initiated_shutdown_behavior = "stop"
   instance_type = "t2.micro"
   key_name = "main"
-  vpc_security_group_ids = ["aws_security_group.bastion_ssh", "aws_default_security_group.db_vpc_default_sg"]
+  vpc_security_group_ids = ["${aws_security_group.bastion_ssh.id}", "${aws_default_security_group.default.id}"]
   source_dest_check = true
   subnet_id = "${aws_subnet.db_sub_pub.id}"
   tags = {
     Name = "instance_bastion"
     Stack = "webhooks-example"
   }
+
+  depends_on = ["aws_vpc.db_vpc", "aws_security_group.bastion_ssh", "aws_subnet.db_sub_pub"]
 
   user_data = <<EOF
 #!/bin/bash
@@ -216,7 +194,7 @@ resource "aws_instance" "timestreamdb" {
   instance_type = "t2.micro"
   key_name = "main"
   private_ip = "${var.ip_addrs["db_address"]}"
-  vpc_security_group_ids = ["aws_default_security_group.db_vpc_default_sg"]
+  vpc_security_group_ids = ["${aws_default_security_group.default.id}"]
   source_dest_check = true
   subnet_id = "${aws_subnet.db_sub_priv.id}"
 
@@ -224,6 +202,8 @@ resource "aws_instance" "timestreamdb" {
     Name = "instance_timestreamdb"
     Stack = "webhooks-example"
   }
+
+  depends_on = ["aws_vpc.db_vpc", "aws_subnet.db_sub_priv"]
 
   user_data = <<EOF
 #!/bin/bash

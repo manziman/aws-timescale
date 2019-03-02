@@ -2,3 +2,5 @@
 *.serverless*
 node_modules
 venv
+terraform.tfstate*
+.terraform*
