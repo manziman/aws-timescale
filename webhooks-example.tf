@@ -139,7 +139,33 @@ resource "aws_security_group" "bastion_ssh" {
   }
 
   tags = {
-    Name = "bastion_ssh_group"
+    Name = "bastion_security_group"
+    Stack = "webhooks-example"
+  }
+
+  depends_on = ["aws_vpc.db_vpc"]
+}
+resource "aws_security_group" "grafana_web" {
+  name        = "grafana_web"
+  description = "Grafana instance"
+  vpc_id      = "${aws_vpc.db_vpc.id}"
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["10.0.2.0/0"]
+  }
+
+  ingress {
+    from_port   = 3000
+    to_port     = 3000
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "grafana_security_group"
     Stack = "webhooks-example"
   }
 
@@ -187,8 +213,38 @@ apt-get install openssh-server -yq
 service ssh start
 EOF
 }
+resource "aws_instance" "grafana" {
+  ami           = "ami-0ac019f4fcb7cb7e6"
+  instance_initiated_shutdown_behavior = "stop"
+  instance_type = "t2.micro"
+  key_name = "main"
+  vpc_security_group_ids = ["${aws_security_group.grafana_web.id}", "${aws_default_security_group.default.id}"]
+  source_dest_check = true
+  subnet_id = "${aws_subnet.db_sub_pub.id}"
+  tags = {
+    Name = "instance_grafana"
+    Stack = "webhooks-example"
+  }
 
-resource "aws_instance" "timestreamdb" {
+  depends_on = ["aws_vpc.db_vpc", "aws_security_group.grafana_web", "aws_subnet.db_sub_pub", "aws_instance.timescaledb"]
+
+  user_data = <<EOF
+#!/bin/bash
+export DEBIAN_FRONTEND=noninteractive
+apt-get update -yq && apt-get upgrade -yq
+apt-get install openssh-server -yq
+service ssh start
+echo "deb https://packages.grafana.com/oss/deb stable main" > /etc/apt/sources.list.d/grafana.list
+curl https://packages.grafana.com/gpg.key | sudo apt-key add -
+sudo apt-get update
+sudo apt-get install grafana
+systemctl daemon-reload
+systemctl start grafana-server
+systemctl status grafana-server
+systemctl enable grafana-server.service
+EOF
+}
+resource "aws_instance" "timescaledb" {
   ami           = "ami-0ac019f4fcb7cb7e6"
   instance_initiated_shutdown_behavior = "stop"
   instance_type = "t2.micro"
@@ -199,7 +255,7 @@ resource "aws_instance" "timestreamdb" {
   subnet_id = "${aws_subnet.db_sub_priv.id}"
 
   tags = {
-    Name = "instance_timestreamdb"
+    Name = "instance_timescaledb"
     Stack = "webhooks-example"
   }
 
@@ -209,9 +265,9 @@ resource "aws_instance" "timestreamdb" {
 #!/bin/bash
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -yq && apt-get upgrade -yq
-apt-get install software-properties-common gnupg2 wget openssh-server -yq
+apt-get install software-properties-common gnupg2 openssh-server -yq
 sh -c \"echo 'deb http://apt.postgresql.org/pub/repos/apt/ bionic-pgdg main' >> /etc/apt/sources.list.d/pgdg.list\"
-wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
+curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
 add-apt-repository -y ppa:timescale/timescaledb-ppa
 apt-get update -yq && apt-get upgrade -yq
 printf \"12\n5\n\" | apt-get install -y timescaledb-postgresql-11
@@ -222,6 +278,8 @@ service postgresql restart
 su - postgres -c \"psql -U postgres -d postgres -c \\\"alter user postgres with password 'p@ssw0rd';\\\"\"
 su - postgres -c \"PGPASSWORD='p@ssw0rd' psql -U postgres -c \\\"CREATE DATABASE webhook;\\\"\"
 su - postgres -c \"PGPASSWORD='p@ssw0rd' psql -U postgres -c \\\"CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;\\\" webhook\"
+su - postgres -c \"PGPASSWORD='p@ssw0rd' psql -U postgres -c \\\"CREATE TABLE example_data \\\(first_data INT not null, second_data INT not null, time TIMESTAMP not null\\\);\\\" webhook\"
+su - postgres -c \"PGPASSWORD='p@ssw0rd' psql -U postgres -c \\\"SELECT create_hypertable\\\('example_data', 'time', chunk_time_interval => interval '1 minute'\\\);\\\" webhook\"
 service ssh start"
 EOF
 }
