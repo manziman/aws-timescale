@@ -9,7 +9,7 @@ apt-get update -yq && apt-get upgrade -yq
 printf "12\n5\n" | apt-get install -y timescaledb-postgresql-11
 timescaledb-tune --quiet --yes
 sed -i "s/#listen_addresses = 'localhost'/listen_addresses = '10.0.2.55'/g" /etc/postgresql/11/main/postgresql.conf
-sed -i "s/# IPv4 local connections:/host    all             all             10.0.2.0\/24             md5/g" /etc/postgresql/11/main/pg_hba.conf
+sed -i "s/# IPv4 local connections:/host    all             all             10.0.0.0\/16             md5/g" /etc/postgresql/11/main/pg_hba.conf
 service postgresql restart
 su - postgres -c "psql -U postgres -d postgres -c \"alter user postgres with password 'p@ssw0rd';\""
 su - postgres -c "PGPASSWORD='p@ssw0rd' psql -U postgres -c \"CREATE DATABASE webhook;\""
