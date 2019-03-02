@@ -1,5 +1,11 @@
 service: webhooks-func
 
+custom:
+  dbIntenalHostname: ${env:DB_INTERNAL_HOSTNAME}
+  dbSecurityGroupId: ${env:DB_SECURITY_GROUP}
+  dbSubnetId: ${env:DB_SUBNET}
+  dbPass: ${env:POSTGRES_PASS}
+
 provider:
   name: aws
   runtime: python3.7
@@ -13,28 +19,23 @@ package:
 plugins:
   - serverless-python-requirements
 
-# resources
 resources:
   Outputs:
     ApiId:
       Value:
         Ref: 'ApiGatewayRestApi'
 
-# plugins:
-#   - serverless-pseudo-parameters
-
-# lambda functions
 functions:
   create:
     handler: webhook/consumer.consume
     vpc:
       securityGroupIds:
-        - ${cf:webhook-networking-dev.DBSecurityGroupId.Value}
+        - ${self:custom.dbSecurityGroupId}
       subnetIds:
-        - ${cf:webhook-networking-dev.DBPrivSubnetId.Value}
+        - ${self:custom.dbSubnetId}
     environment:
-      DB_PRIVATE_HOSTNAME: ${cf:webhook-db-dev.DBInstanceDNSInternal.Value}
-      POSTGRES_PASS: ${env:POSTGRES_PASS}
+      DB_PRIVATE_HOSTNAME: ${self:custom.dbIntenalHostname}
+      POSTGRES_PASS: ${self:custom.dbPass}
     events:
       - http:
           path: consume

@@ -1,8 +1,10 @@
 plan:
 	./tf-plan.sh
 
-apply:
+deploy:
 	./tf-apply.sh
+	./sls-deploy.sh
 
 destroy:
 	./tf-destroy.sh
+	./sls-remove.sh

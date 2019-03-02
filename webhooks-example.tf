@@ -154,7 +154,7 @@ resource "aws_security_group" "grafana_web" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["10.0.2.0/0"]
+    cidr_blocks = ["10.0.2.0/24"]
   }
 
   ingress {
@@ -282,4 +282,13 @@ su - postgres -c \"PGPASSWORD='p@ssw0rd' psql -U postgres -c \\\"CREATE TABLE ex
 su - postgres -c \"PGPASSWORD='p@ssw0rd' psql -U postgres -c \\\"SELECT create_hypertable\\\('example_data', 'time', chunk_time_interval => interval '1 minute'\\\);\\\" webhook\"
 service ssh start"
 EOF
+}
+output "db_subnet_id" {
+  value = "${aws_subnet.db_sub_priv.id}"
+}
+output "db_internal_hostname" {
+  value = "${aws_instance.timescaledb.private_dns}"
+}
+output "db_security_group_id" {
+  value = "${aws_default_security_group.default.id}"
 }
